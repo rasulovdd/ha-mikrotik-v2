@@ -1,4 +1,4 @@
-# ha-mikrotik (Tested stable)
+# ha-mikrotik (original https://github.com/svlsResearch/ha-mikrotik)
 High availability code for Mikrotik routers
 
 # Status: December 10th 2019
@@ -76,3 +76,46 @@ Install a compatible version of RouterOS on the new hardware and factory reset t
 2. Follow on screen instructions just like original install.
 3. Once the standby comes back, `$HASyncStandby`.
 4. Done.
+
+# Скрипт не работал с CCR2004-1G-12S+2XS, Firmware 7.*, чтобы решить вопрос, я чуть чуть переделал скрипт и добавил еще один скрипт для нормальной работы скрипта.
+# Как новые скрипты работают 
+  Каждое утро конфиг с основного микротика заливается на резервный. 
+  Если вам надо в ручном режиме залить конфиг на резервный конфиг то вам достаточно запустить скрипт **ha_pushbackup**
+  **Если с вашим микротиком все будет иначе и стандартный скрипт заработает то мою доработку не надо применять!**
+  
+# Как установить
+  1. Подготовьте 2 одинаковых микротика, обновите их чтобы оба микротика были с одинаковой версией **RouterOS** и **Routerboard firmware**
+  2. убедитесь что у вас есть консольное подключение к обоим микротикам
+  3. Сбросьте оба маршрутизатора с помощью команды: 
+  ```bash
+  /file remove [find]; /system reset-configuration keep-users=no no-defaults=yes skip-backup=yes
+  ```
+  4. Подключите кабель ethernet между ether10 и ether10 (я выбираю последний порт микротика)
+  5. На одном маршрутизаторе настройте IP адрес на интерфейс ether1. Нужно для того чтобы скопировать файл.
+  6. Загрузите файл HA_init.rsc и импортируйте его:
+  ```bash
+  /import HA_init.rsc
+  ```
+  7. Установите HA (обратите внимание, что необходимо заменить поля macA, MacB и пароль.
+  ```bash
+  $HAInstall interface="ether10" macA="[MAC_OF_A_ETHER10]" macB="[MAC_OF_B_ETHER_10]" password="[ВАШ ПАРОЛЬ]"
+  ```
+  8. Следуйте инструкциям, приведенным в $HAInstall, для начальной загрузки дополнительного устройства. Я использую MAC telnet.
+  (Скрипт выдаст конфиг которую надо скопировать и вставить на второй микротик, сохраните этот текст конфига)
+  9. Вот отсюда начинаются мои изменения
+  10. Откройте скрипт **ha_startup** и замените код на код из файла **ha_startup_fix** (в папке fix) и сохраните скрипт. Внимание, название скрипта на микротике не менять!
+  11. Создайте новый скрипт, название скрипта **fix_me** установите галку **Don't Require Permissions**
+  содержание скрипта:
+  ```bash
+  :global haInterface; 
+  /log warning "fix_me: start";
+  /interface ethernet enable $haInterface;
+  /interface ethernet reset-mac-address [find default-name="$haInterface"];
+  /interface vrrp enable HA_VRRP;
+  /ip service enable ftp; 
+  /log warning "fix_me: end";
+  ```
+  сохраните скрипт.
+  12. подключитесь к микротику 2 и там тоже создайте этого скрипта.
+  13. откройте терминал и введите код которую выдал скрипт из 8 пункта 
+  Готово.
