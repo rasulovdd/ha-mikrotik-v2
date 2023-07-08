@@ -1,0 +1,7 @@
+:global haInterface; 
+/log warning "fix_me: start";
+/interface ethernet enable $haInterface;
+/interface ethernet reset-mac-address [find default-name="$haInterface"];
+/interface vrrp enable HA_VRRP;
+/ip service enable ftp; 
+/log warning "fix_me: end";
